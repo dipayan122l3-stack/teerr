@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bet OCR Calculator 00–99</title>
+
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+
+<style>
+body {
+  font-family: Arial, sans-serif;
+  background: #111;
+  color: #fff;
+  margin: 0;
+  padding: 15px;
+}
+h1 {
+  text-align: center;
+}
+.container {
+  max-width: 600px;
+  margin: auto;
+}
+button {
+  width: 100%;
+  padding: 12px;
+  margin-top: 10px;
+  background: #0d6efd;
+  border: none;
+  color: white;
+  font-size: 16px;
+  border-radius: 6px;
+}
+button:active {
+  background: #084298;
+}
+input[type=file], textarea {
+  width: 100%;
+  margin-top: 10px;
+  padding: 10px;
+  border-radius: 6px;
+  border: none;
+}
+textarea {
+  min-height: 120px;
+}
+img {
+  width: 100%;
+  margin-top: 10px;
+  border-radius: 6px;
+}
+.table {
+  margin-top: 15px;
+  background: #222;
+  border-radius: 6px;
+  padding: 10px;
+}
+.row {
+  display: flex;
+  justify-content: space-between;
+  padding: 6px 0;
+  border-bottom: 1px solid #333;
+}
+.row:last-child {
+  border-bottom: none;
+}
+.total {
+  font-size: 18px;
+  font-weight: bold;
+  margin-top: 10px;
+}
+</style>
+</head>
+
+<body>
+<div class="container">
+
+<h1>📸 Bet OCR Calculator</h1>
+
+<input type="file" accept="image/*" capture="environment" id="imageInput">
+
+<button onclick="readImage()">Read Image (OCR)</button>
+
+<img id="preview" />
+
+<textarea id="ocrText" placeholder="OCR text will appear here (editable)"></textarea>
+
+<button onclick="calculate()">Calculate</button>
+
+<div id="results" class="table"></div>
+
+<div id="grandTotal" class="total"></div>
+
+</div>
+
+<script>
+let imageFile;
+
+document.getElementById("imageInput").addEventListener("change", e => {
+  imageFile = e.target.files[0];
+  document.getElementById("preview").src = URL.createObjectURL(imageFile);
+});
+
+function readImage() {
+  if (!imageFile) {
+    alert("Please select or take a photo");
+    return;
+  }
+
+  document.getElementById("ocrText").value = "Reading image...";
+
+  Tesseract.recognize(
+    imageFile,
+    "eng",
+    { logger: m => console.log(m) }
+  ).then(({ data: { text } }) => {
+    document.getElementById("ocrText").value = text;
+  });
+}
+
+function calculate() {
+  const text = document.getElementById("ocrText").value;
+  const lines = text.split("\n");
+  const data = {};
+
+  lines.forEach(line => {
+    line = line.trim();
+    if (!line) return;
+
+    const numMatch = line.match(/^(\d{1,2})/);
+    const values = line.match(/\d+/g);
+
+    if (!numMatch || !values || values.length < 2) return;
+
+    const betNum = parseInt(numMatch[1]);
+    if (betNum < 0 || betNum > 99) return;
+
+    const amounts = values.slice(1).map(Number);
+    const sum = amounts.reduce((a, b) => a + b, 0);
+
+    data[betNum] = (data[betNum] || 0) + sum;
+  });
+
+  renderResults(data);
+}
+
+function renderResults(data) {
+  const resultsDiv = document.getElementById("results");
+  const totalDiv = document.getElementById("grandTotal");
+  resultsDiv.innerHTML = "";
+  totalDiv.innerHTML = "";
+
+  let grandTotal = 0;
+
+  Object.keys(data)
+    .sort((a, b) => a - b)
+    .forEach(num => {
+      const row = document.createElement("div");
+      row.className = "row";
+      row.innerHTML = `<span>${num}</span><span>₹ ${data[num]}</span>`;
+      resultsDiv.appendChild(row);
+      grandTotal += data[num];
+    });
+
+  if (grandTotal > 0) {
+    totalDiv.innerHTML = "GRAND TOTAL: ₹ " + grandTotal;
+  }
+}
+</script>
+
+</body>
+</html>
